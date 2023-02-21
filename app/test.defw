@@ -1,0 +1,9 @@
+win 
+  title "Hello, world"
+
+  draw -> (fgColor #FFF)
+    rect 
+      at 0 0
+      sized 50 50
+  end
+end
