@@ -1,12 +1,12 @@
 module Parser where
 
-import Control.Applicative
-import Control.Monad
-import Data.Either
-import DefwDefinition
-import Error
-import Utils
-import Data.Char
+import           Control.Applicative
+import           Control.Monad
+import           Data.Char
+import           Data.Either
+import           DefwDefinition
+import           Error
+import           Utils
 
 type ParseError = String
 
@@ -18,7 +18,7 @@ instance Functor Parser where
   fmap f (Parser p) = Parser $ \input ->
     case p input of
       Right (rest, x) -> Right (rest, f x)
-      Left err -> Left err
+      Left err        -> Left err
 
 instance Applicative Parser where
   pure a = Parser $ \input -> Right (input, a)
@@ -45,10 +45,8 @@ instance Monad Parser where
       f input = case a input of
         Right (rest, result) ->
           let Parser b = pf result
-           in b rest
+          in b rest
         Left err -> Left err
-
-instance MonadPlus Parser
 
 withError :: (String -> String) -> Parser a -> Parser a
 withError onError (Parser p) = Parser f
@@ -56,7 +54,7 @@ withError onError (Parser p) = Parser f
     f input =
       case p input of
         Left _ -> Left $ onError input
-        r -> r
+        r      -> r
 
 sequence' :: (Char -> Bool) -> Parser String
 sequence' predicate = Parser f
@@ -77,12 +75,11 @@ word expected =
     (expectedError "word" expected)
     (traverse char expected)
 
--- TODO remove spaces
 defwWindow :: Parser DefwToken
-defwWindow = DefwWindow <$> (word "win" *> spaces *> defwCommands <* spaces <* word "end")
+defwWindow = DefwWindow <$> (word "win" *> spaces *> defwCommands <* word "end")
 
 defwCommands :: Parser [DefwToken]
-defwCommands = some defwCommand
+defwCommands = some (defwCommand <* spaces)
 
 defwCommand :: Parser DefwToken
 defwCommand = defwTitle <|> defwDraw
@@ -98,36 +95,39 @@ defwTitle = DefwTitle <$> checked (word "title" *> spaces *> defwString)
       Left err -> Left err
 
 defwDraw :: Parser DefwToken
-defwDraw = (\_ -> DefwTitle "TODO") <$> (word "draw" *> spaces *> some defwDrawElement <* spaces <* word "end")
+defwDraw = DefwDraw <$>
+  (word "draw" *> spaces *> word "->" *> spaces *> char '(' *> many defwArgument <* char ')' <* spaces)
+  <*> ((some defwDrawElement) <* word "end")
 
-defwDrawElement = undefined
-
-{-
 defwDrawElement :: Parser DefwToken
-defwDrawElement = element *> spaces *> defwData <* spaces <* word "end"
+defwDrawElement = DefwCommand <$> element <*> (spaces *> many (defwData <* spaces))
   where
-    element = (msum . map word) allowed
+    element = (asum . map word) allowed
     allowed = ["rect", "text"]
 
+defwArgument :: Parser DefwArgument
+defwArgument = (,) <$> (defwString <* space) <*> defwString
+
 defwData :: Parser DefwData
-defwData = msum rules
+defwData = asum rules
   where
     rules =
-      [ word "at" *> (defwNumber, defwNumber),
-        word "sized" *> (defwNumber <*> defwNumber)
+      [ toDefwData <$> (word "at" <* space) <*> doubleNum,
+        toDefwData <$> (word "sized" <* space) <*> doubleNum
       ]
+    doubleNum = (,) <$> (defwNumber <* space) <*> defwNumber
     toDefwData cmd args = case cmd of
-      "sized" -> DefwSized (tuple2 args)
-      "at" -> DefwAt (tuple2  args)
--}
+      "sized" -> DefwSized args
+      "at"    -> DefwAt args
+
 defwString :: Parser String
 defwString =
   withError
     (expectedNull "string")
-    (char '"' *> sequence' (/= '"') <* char '"')
+    (char '\"' *> sequence' (/= '\"') <* char '\"')
 
-defwNumber :: Parser String
-defwNumber = sequence' isDigit
+defwNumber :: Parser Int
+defwNumber = read <$> sequence' isDigit
 
 space :: Parser Char
 space =

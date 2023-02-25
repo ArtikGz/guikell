@@ -4,28 +4,30 @@ data DefwToken
   = DefwTitle String
   | DefwOn
       { caseName :: String,
-        cases :: String
+        cases    :: String
       }
   | DefwBlock
-      { blockName :: String,
+      { blockName     :: String,
         blockCommands :: [DefwToken]
       }
   | DefwCommand
       { commandName :: String,
-        commandArguments :: [(String, DefwDataType)],
         commandData :: [DefwData]
       }
   | DefwWindow
       { windowCommands :: [DefwToken]
       }
+  | DefwDraw
+      { arguments :: [DefwArgument],
+        commands  :: [DefwToken]
+      }
+  | DefwArgument (String, String)
   deriving (Show)
+
+type DefwArgument = (String, String)
 
 data DefwData
   = DefwAt (Int, Int)
   | DefwSized (Int, Int)
-  deriving (Show)
-
-data DefwDataType
-  = DefwInt Int
-  | DefwStr String
+  | DefwAs String
   deriving (Show)

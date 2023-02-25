@@ -1,42 +1,70 @@
 module DefwXlib where
 
-import Data.Bits
-import DefwDefinition
-import Graphics.X11.Xlib
-import Graphics.X11.Xlib.Extras
+import           Data.Bits
+import           DefwDefinition
+import           Graphics.X11.Xlib
+import           Graphics.X11.Xlib.Extras
 
-runCycle :: Event -> IO Bool
-runCycle = handleEvent
-
-handleEvent :: Event -> IO Bool
-handleEvent (KeyEvent {ev_keycode = key}) = case key of
-  24 -> return False
-  _ -> return True
-handleEvent (ExposeEvent {ev_window = w, ev_width = width, ev_height = height, ev_event_display = d}) =
-  drawWindowElements d w (fromIntegral width) (fromIntegral height)
-    >> return True
-
-drawWindowElements :: Display -> Window -> Int -> Int -> IO ()
-drawWindowElements d w width height =
-  createGC d w >>= drawElement
-  where
-    drawElement gc =
-      setForeground d gc (whitePixel d 0)
-        >> drawRectangle d w gc 50 50 50 50
-        >> drawRectangle d w gc 50 150 50 50
-        >> drawString d w gc 50 125 "Привет, мир"
+mainLoop :: Display -> [DefwToken] -> Bool -> IO ()
+mainLoop _ _ False = return ()
+mainLoop d cmds True =
+  getNextEvent d
+    >>= runCycle cmds
+    >>= mainLoop d cmds
 
 getNextEvent :: Display -> IO Event
 getNextEvent d = allocaXEvent $ \e ->
   nextEvent d e
     >> getEvent e
 
-mainLoop :: Display -> Bool -> IO ()
-mainLoop _ False = return ()
-mainLoop d True =
-  getNextEvent d
-    >>= runCycle
-    >>= mainLoop d
+runCycle :: [DefwToken] -> Event -> IO Bool
+runCycle = handleEvent
+
+handleEvent :: [DefwToken] -> Event -> IO Bool
+handleEvent _ (KeyEvent {ev_keycode = key}) = case key of
+  24 -> return False
+  _  -> return True
+handleEvent cmds (ExposeEvent {ev_window = w, ev_event_display = d}) =
+  drawWindowElements d w cmds
+  >> return True
+handleEvent _ _ = return True
+
+drawWindowElements :: Display -> Window -> [DefwToken] -> IO ()
+drawWindowElements d w (x:xs) =
+  createDrawGc d w (arguments x)
+  >>= drawElements
+  where
+    drawElements gc = drawCommands (commands x) gc
+    drawCommands (x:xs) gc
+      | null xs = drawCommand x gc
+      | otherwise = drawCommand x gc >> drawCommands xs gc
+    drawCommand x gc =
+      case (commandName x) of
+        "rect" -> drawRectangle d w gc
+          (fromIntegral $ fst $ getAt $ commandData x)
+          (fromIntegral $ snd $ getAt $ commandData x)
+          (fromIntegral $ fst $ getSized $ commandData x)
+          (fromIntegral $ snd $ getSized $ commandData x)
+    getAt (x:xs) = case x of
+      DefwAt r -> r
+      _        -> getAt xs
+    getSized (x:xs) = case x of
+      DefwSized r -> r
+      _           -> getSized xs
+
+
+createDrawGc :: Display -> Window -> [DefwArgument] -> IO GC
+createDrawGc d w args = do
+  gc <- createGC d w
+  interpretArguments args d gc
+  return gc
+  where
+    interpretArguments (x:xs) d gc
+      | null xs = stablishGcProperty x d gc
+      | otherwise = stablishGcProperty x d gc >> interpretArguments xs d gc
+    stablishGcProperty proper d gc =
+      case (fst proper) of
+        "fgColor" -> setForeground d gc (whitePixel d 0)
 
 interpretCommands :: Display -> Window -> [DefwToken] -> IO ()
 interpretCommands d w (x:xs)
@@ -45,6 +73,13 @@ interpretCommands d w (x:xs)
   where
     interpretCommand command = case command of
       DefwTitle title -> storeName d w title
+      _               -> return ()
+
+collectDrawInstructions :: [DefwToken] -> [DefwToken]
+collectDrawInstructions = filter isDraw
+  where
+    isDraw (DefwDraw {}) = True
+    isDraw _             = False
 
 defwXlibMain :: DefwToken -> IO ()
 defwXlibMain win = do
@@ -55,7 +90,7 @@ defwXlibMain win = do
   selectInput d w (keyPressMask .|. exposureMask)
 
   interpretCommands d w $ windowCommands win
-  mainLoop d True
+  mainLoop d (collectDrawInstructions $ windowCommands win) True
 
   destroyWindow d w
   closeDisplay d

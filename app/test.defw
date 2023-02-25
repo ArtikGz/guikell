@@ -1,9 +1,13 @@
 win 
-  title "Hello, world"
+  title "Título da aplicaçom"
 
-  draw -> (fgColor #FFF)
+  draw -> ("fgColor" "osatur")
     rect 
-      at 0 0
-      sized 50 50
+      at 150 50
+      sized 50 150
+
+    rect
+      at 50 50
+      sized 150 50
   end
 end

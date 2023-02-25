@@ -8,9 +8,7 @@ frontend :: DefwToken -> IO ()
 frontend = defwXlibMain
 
 main :: IO ()
-main =
-  getLine
-    >>= readFile
+main = readFile "app/test.defw"
     >>= (runFrontend . run defwWindow)
   where
     runFrontend (Right (_, window)) = frontend window
