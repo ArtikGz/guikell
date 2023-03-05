@@ -34,11 +34,8 @@ drawWindowElements d w (x:xs) =
   createDrawGc d w (arguments x)
   >>= drawElements
   where
-    drawElements gc = drawCommands (commands x) gc
-    drawCommands (x:xs) gc
-      | null xs = drawCommand x gc
-      | otherwise = drawCommand x gc >> drawCommands xs gc
-    drawCommand x gc =
+    drawElements gc = mapM_ (drawCommand gc) (commands x)
+    drawCommand gc x =
       case (commandName x) of
         "rect" -> drawRectangle d w gc
           (fromIntegral $ fst $ getAt $ commandData x)
@@ -52,24 +49,18 @@ drawWindowElements d w (x:xs) =
       DefwSized r -> r
       _           -> getSized xs
 
-
 createDrawGc :: Display -> Window -> [DefwArgument] -> IO GC
 createDrawGc d w args = do
   gc <- createGC d w
-  interpretArguments args d gc
+  mapM_ (stablishGcProperty d gc) args
   return gc
   where
-    interpretArguments (x:xs) d gc
-      | null xs = stablishGcProperty x d gc
-      | otherwise = stablishGcProperty x d gc >> interpretArguments xs d gc
-    stablishGcProperty proper d gc =
-      case (fst proper) of
-        "fgColor" -> setForeground d gc (whitePixel d 0)
+    stablishGcProperty d gc proper =
+      case proper of
+        ("fgColor", val) -> setForeground d gc (whitePixel d 0)
 
 interpretCommands :: Display -> Window -> [DefwToken] -> IO ()
-interpretCommands d w (x:xs)
-  | null xs = interpretCommand x
-  | otherwise = interpretCommand x >> interpretCommands d w xs
+interpretCommands d w commands = mapM_ interpretCommand commands
   where
     interpretCommand command = case command of
       DefwTitle title -> storeName d w title

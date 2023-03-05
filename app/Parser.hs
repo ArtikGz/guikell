@@ -10,15 +10,16 @@ import           Utils
 
 type ParseError = String
 
+type ParseResult a = Either ParseError (String, a)
+
 newtype Parser a = Parser
-  { run :: String -> Either ParseError (String, a)
+  { run :: String -> ParseResult a
   }
 
 instance Functor Parser where
-  fmap f (Parser p) = Parser $ \input ->
-    case p input of
-      Right (rest, x) -> Right (rest, f x)
-      Left err        -> Left err
+  fmap f (Parser p) = Parser $ \input -> do
+    (rest, x) <- p input
+    return (rest, f x)
 
 instance Applicative Parser where
   pure a = Parser $ \input -> Right (input, a)
