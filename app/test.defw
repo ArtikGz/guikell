@@ -1,7 +1,7 @@
 win 
   title "Título da aplicaçom"
 
-  draw -> ("fgColor" "osatur")
+  draw -> ("fgColor" "#FF0000")
     rect 
       at 150 50
       sized 50 150

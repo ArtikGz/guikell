@@ -1,8 +1,13 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use lambda" #-}
 module DefwXlib where
 
+import           Control.Monad
 import           Data.Bits
+import           Data.Functor
 import           DefwDefinition
 import           Graphics.X11.Xlib
+import           Graphics.X11.Xlib.Color
 import           Graphics.X11.Xlib.Extras
 
 mainLoop :: Display -> [DefwToken] -> Bool -> IO ()
@@ -26,41 +31,46 @@ handleEvent _ (KeyEvent {ev_keycode = key}) = case key of
   _  -> return True
 handleEvent cmds (ExposeEvent {ev_window = w, ev_event_display = d}) =
   drawWindowElements d w cmds
-  >> return True
+    >> return True
 handleEvent _ _ = return True
 
 drawWindowElements :: Display -> Window -> [DefwToken] -> IO ()
-drawWindowElements d w (x:xs) =
+drawWindowElements d w (x : xs) =
   createDrawGc d w (arguments x)
-  >>= drawElements
+    >>= drawElements
   where
-    drawElements gc = mapM_ (drawCommand gc) (commands x)
-    drawCommand gc x =
-      case (commandName x) of
-        "rect" -> drawRectangle d w gc
-          (fromIntegral $ fst $ getAt $ commandData x)
-          (fromIntegral $ snd $ getAt $ commandData x)
-          (fromIntegral $ fst $ getSized $ commandData x)
-          (fromIntegral $ snd $ getSized $ commandData x)
-    getAt (x:xs) = case x of
-      DefwAt r -> r
-      _        -> getAt xs
-    getSized (x:xs) = case x of
-      DefwSized r -> r
-      _           -> getSized xs
+    drawElements gc = forM_ (commands x) $ \command ->
+      case command of
+        DefwCommand "rect" [DefwAt at, DefwSized sized] ->
+          drawRectangle
+            d
+            w
+            gc
+            (fromIntegral $ fst at)
+            (fromIntegral $ snd at)
+            (fromIntegral $ fst sized)
+            (fromIntegral $ snd sized)
 
 createDrawGc :: Display -> Window -> [DefwArgument] -> IO GC
 createDrawGc d w args = do
   gc <- createGC d w
-  mapM_ (stablishGcProperty d gc) args
+  forM_ args (stablishGcProperty d gc)
   return gc
   where
     stablishGcProperty d gc proper =
       case proper of
-        ("fgColor", val) -> setForeground d gc (whitePixel d 0)
+        ("fgColor", val) ->
+          hexToColor val d
+          >>= setForeground d gc
 
+hexToColor :: String -> Display -> IO Pixel
+hexToColor s d =
+  let colormap = defaultColormap d (defaultScreen d)
+   in parseColor d colormap s
+        >>= allocColor d colormap
+        <&> color_pixel
 interpretCommands :: Display -> Window -> [DefwToken] -> IO ()
-interpretCommands d w commands = mapM_ interpretCommand commands
+interpretCommands d w = mapM_ interpretCommand
   where
     interpretCommand command = case command of
       DefwTitle title -> storeName d w title
@@ -69,8 +79,8 @@ interpretCommands d w commands = mapM_ interpretCommand commands
 collectDrawInstructions :: [DefwToken] -> [DefwToken]
 collectDrawInstructions = filter isDraw
   where
-    isDraw (DefwDraw {}) = True
-    isDraw _             = False
+    isDraw DefwDraw{} = True
+    isDraw _          = False
 
 defwXlibMain :: DefwToken -> IO ()
 defwXlibMain win = do
