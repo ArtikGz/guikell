@@ -35,11 +35,12 @@ handleEvent cmds (ExposeEvent {ev_window = w, ev_event_display = d}) =
 handleEvent _ _ = return True
 
 drawWindowElements :: Display -> Window -> [DefwToken] -> IO ()
-drawWindowElements d w (x : xs) =
-  createDrawGc d w (arguments x)
-    >>= drawElements
+drawWindowElements d w args = 
+  forM_ args $ \arg ->
+    createDrawGc d w (arguments arg)
+      >>= drawElements (commands arg)
   where
-    drawElements gc = forM_ (commands x) $ \command ->
+    drawElements commands gc = forM_ commands $ \command ->
       case command of
         DefwCommand "rect" [DefwAt at, DefwSized sized] ->
           drawRectangle
