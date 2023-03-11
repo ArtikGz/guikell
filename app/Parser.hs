@@ -98,7 +98,7 @@ defwTitle = DefwTitle <$> checked (word "title" *> spaces *> defwString)
 defwDraw :: Parser DefwToken
 defwDraw = DefwDraw <$>
   (word "draw" *> spaces *> word "->" *> spaces *> char '(' *> many defwArgument <* char ')' <* spaces)
-  <*> ((some defwDrawElement) <* word "end")
+  <*> (some defwDrawElement <* word "end")
 
 defwDrawElement :: Parser DefwToken
 defwDrawElement = DefwCommand <$> element <*> (spaces *> many (defwData <* spaces))
@@ -114,12 +114,10 @@ defwData = asum rules
   where
     rules =
       [ toDefwData <$> (word "at" <* space) <*> doubleNum,
-        toDefwData <$> (word "sized" <* space) <*> doubleNum
+        toDefwData <$> (word "sized" <* space) <*> doubleNum,
+        DefwAs <$> (word "as" *> space *> defwString)
       ]
-    doubleNum = (,) <$> (defwNumber <* space) <*> defwNumber
-    toDefwData cmd args = case cmd of
-      "sized" -> DefwSized args
-      "at"    -> DefwAt args
+    doubleNum = (\a b -> [a, b]) <$> (defwNumber <* space) <*> defwNumber
 
 defwString :: Parser String
 defwString =

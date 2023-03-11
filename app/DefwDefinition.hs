@@ -1,4 +1,5 @@
 module DefwDefinition where
+import Utils
 
 data DefwToken
   = DefwTitle String
@@ -31,3 +32,7 @@ data DefwData
   | DefwSized (Int, Int)
   | DefwAs String
   deriving (Show)
+
+toDefwData :: String -> [Int] -> DefwData
+toDefwData "sized" [x, y] = DefwSized (x, y) 
+toDefwData "at" [x, y] = DefwAt (x, y)  

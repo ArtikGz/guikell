@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Use lambda" #-}
+{-# HLINT ignore "Use lambda-case" #-}
 module DefwXlib where
 
 import           Control.Monad
@@ -35,7 +35,7 @@ handleEvent cmds (ExposeEvent {ev_window = w, ev_event_display = d}) =
 handleEvent _ _ = return True
 
 drawWindowElements :: Display -> Window -> [DefwToken] -> IO ()
-drawWindowElements d w args = 
+drawWindowElements d w args =
   forM_ args $ \arg ->
     createDrawGc d w (arguments arg)
       >>= drawElements (commands arg)
@@ -51,6 +51,14 @@ drawWindowElements d w args =
             (fromIntegral $ snd at)
             (fromIntegral $ fst sized)
             (fromIntegral $ snd sized)
+        DefwCommand "text" [DefwAt at, DefwAs as] ->
+          drawString
+            d
+            w
+            gc
+            (fromIntegral $ fst at)
+            (fromIntegral $ snd at)
+            as
 
 createDrawGc :: Display -> Window -> [DefwArgument] -> IO GC
 createDrawGc d w args = do
@@ -70,6 +78,7 @@ hexToColor s d =
    in parseColor d colormap s
         >>= allocColor d colormap
         <&> color_pixel
+
 interpretCommands :: Display -> Window -> [DefwToken] -> IO ()
 interpretCommands d w = mapM_ interpretCommand
   where
