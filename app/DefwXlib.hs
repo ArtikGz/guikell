@@ -5,6 +5,7 @@ module DefwXlib where
 import           Control.Monad
 import           Data.Bits
 import           Data.Functor
+import           Data.List
 import           DefwDefinition
 import           Graphics.X11.Xlib
 import           Graphics.X11.Xlib.Color
@@ -42,23 +43,24 @@ drawWindowElements d w args =
   where
     drawElements commands gc = forM_ commands $ \command ->
       case command of
-        DefwCommand "rect" [DefwAt at, DefwSized sized] ->
+        DefwCommand "rect" cmds | [DefwAt (x, y), DefwSized (width, height)] <- sort cmds ->
           drawRectangle
             d
             w
             gc
-            (fromIntegral $ fst at)
-            (fromIntegral $ snd at)
-            (fromIntegral $ fst sized)
-            (fromIntegral $ snd sized)
-        DefwCommand "text" [DefwAt at, DefwAs as] ->
+            (fromIntegral x)
+            (fromIntegral y)
+            (fromIntegral width)
+            (fromIntegral height)
+        DefwCommand "text" cmds | [DefwAt (x, y), DefwAs text] <- sort cmds ->
           drawString
             d
             w
             gc
-            (fromIntegral $ fst at)
-            (fromIntegral $ snd at)
-            as
+            (fromIntegral x)
+            (fromIntegral y)
+            text
+        _ -> putStrLn "Unknown statement."
 
 createDrawGc :: Display -> Window -> [DefwArgument] -> IO GC
 createDrawGc d w args = do
