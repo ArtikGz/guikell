@@ -30,6 +30,7 @@ handleEvent :: [DefwToken] -> Event -> IO Bool
 handleEvent _ (KeyEvent {ev_keycode = key}) = case key of
   24 -> return False
   _  -> return True
+  
 handleEvent cmds (ExposeEvent {ev_window = w, ev_event_display = d}) =
   drawWindowElements d w cmds
     >> return True

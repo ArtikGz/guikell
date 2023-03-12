@@ -40,15 +40,6 @@ instance Alternative Parser where
         | isLeft (pa input) = pb input
         | otherwise = pa input
 
-instance Monad Parser where
-  (Parser a) >>= pf = Parser f
-    where
-      f input = case a input of
-        Right (rest, result) ->
-          let Parser b = pf result
-          in b rest
-        Left err -> Left err
-
 withError :: (String -> String) -> Parser a -> Parser a
 withError onError (Parser p) = Parser f
   where
