@@ -8,6 +8,10 @@ win
   end
 
   draw -> ("fgColor" "#8A2BE2")
+    rect
+      at 55 55
+      sized 140 40
+
     text
       at 90 80
       as "Hello, world"
