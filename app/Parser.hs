@@ -113,11 +113,11 @@ defwData :: Parser DefwData
 defwData = asum rules
   where
     rules =
-      [ toDefwData <$> (word "at" <* space) <*> doubleNum,
-        toDefwData <$> (word "sized" <* space) <*> doubleNum,
+      [ DefwAt <$> (word "at" *> space *> doubleNum),
+        DefwSized <$> (word "sized" *> space *> doubleNum),
         DefwAs <$> (word "as" *> space *> defwString)
       ]
-    doubleNum = (\a b -> [a, b]) <$> (defwNumber <* space) <*> defwNumber
+    doubleNum = (,) <$> (defwNumber <* space) <*> defwNumber
 
 defwString :: Parser String
 defwString =

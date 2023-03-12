@@ -32,7 +32,3 @@ data DefwData
   | DefwSized (Int, Int)
   | DefwAs String
   deriving (Show, Eq, Ord)
-
-toDefwData :: String -> [Int] -> DefwData
-toDefwData "sized" [x, y] = DefwSized (x, y) 
-toDefwData "at" [x, y] = DefwAt (x, y)  
