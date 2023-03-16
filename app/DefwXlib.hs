@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use lambda-case" #-}
+{-# LANGUAGE ViewPatterns #-}
 module DefwXlib where
 
 import           Control.Monad
@@ -44,7 +45,7 @@ drawWindowElements d w args =
   where
     drawElements commands gc = forM_ commands $ \command ->
       case command of
-        DefwCommand "rect" cmds | [DefwAt (x, y), DefwSized (width, height)] <- sort cmds ->
+        DefwCommand "rect" (sort -> [DefwAt (x, y), DefwSized (width, height)]) ->
           drawRectangle
             d
             w
@@ -53,7 +54,7 @@ drawWindowElements d w args =
             (fromIntegral y)
             (fromIntegral width)
             (fromIntegral height)
-        DefwCommand "text" cmds | [DefwAt (x, y), DefwAs text] <- sort cmds ->
+        DefwCommand "text" (sort -> [DefwAt (x, y), DefwAs text]) ->
           drawString
             d
             w
